@@ -1,0 +1,33 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{965CBDA6-2853-4B6F-AE21-2CDAA2056DA8}") = "chip8_emulator", ".dub/chip8_emulator.visualdproj", "{01CA4EBC-A95B-4D69-A171-43E3E8749F29}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F7114686-BD33-470C-88AD-96B15F7C90A2} = {F7114686-BD33-470C-88AD-96B15F7C90A2}
+		{958E12EC-6E18-4F11-9C2E-843614F4B826} = {958E12EC-6E18-4F11-9C2E-843614F4B826}
+		{68B748F4-E3ED-4A7B-8533-F723E16E5A34} = {68B748F4-E3ED-4A7B-8533-F723E16E5A34}
+	EndProjectSection
+EndProject
+Project("{965CBDA6-2853-4B6F-AE21-2CDAA2056DA8}") = "derelict-gl3", ".dub/derelict-gl3.visualdproj", "{F7114686-BD33-470C-88AD-96B15F7C90A2}"
+EndProject
+Project("{965CBDA6-2853-4B6F-AE21-2CDAA2056DA8}") = "derelict-util", ".dub/derelict-util.visualdproj", "{68B748F4-E3ED-4A7B-8533-F723E16E5A34}"
+EndProject
+Project("{965CBDA6-2853-4B6F-AE21-2CDAA2056DA8}") = "derelict-sdl2", ".dub/derelict-sdl2.visualdproj", "{958E12EC-6E18-4F11-9C2E-843614F4B826}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		debug|Win32 = debug|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{958E12EC-6E18-4F11-9C2E-843614F4B826}.debug|Win32.ActiveCfg = debug|Win32
+		{958E12EC-6E18-4F11-9C2E-843614F4B826}.debug|Win32.Build.0 = debug|Win32
+		{68B748F4-E3ED-4A7B-8533-F723E16E5A34}.debug|Win32.ActiveCfg = debug|Win32
+		{68B748F4-E3ED-4A7B-8533-F723E16E5A34}.debug|Win32.Build.0 = debug|Win32
+		{01CA4EBC-A95B-4D69-A171-43E3E8749F29}.debug|Win32.ActiveCfg = debug|Win32
+		{01CA4EBC-A95B-4D69-A171-43E3E8749F29}.debug|Win32.Build.0 = debug|Win32
+		{F7114686-BD33-470C-88AD-96B15F7C90A2}.debug|Win32.ActiveCfg = debug|Win32
+		{F7114686-BD33-470C-88AD-96B15F7C90A2}.debug|Win32.Build.0 = debug|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

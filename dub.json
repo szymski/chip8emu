@@ -1,0 +1,13 @@
+{
+	"name": "chip8_emulator",
+	"authors": [
+		"Szymon Jankowski"
+	],
+	"description": "CHIP-8 Emulator written in D",
+	"copyright": "Copyright © 2016, Szymon Jankowski",
+	"license": "MIT",
+	"dependencies": {
+		"derelict-sdl2": "~>2.0.0",
+		"derelict-gl3": "~master"
+	}
+}

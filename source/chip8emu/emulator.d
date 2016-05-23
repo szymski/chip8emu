@@ -1,7 +1,7 @@
 module chip8emu.emulator;
 
-import std.stdio, std.datetime, core.thread, derelict.sdl2.sdl, derelict.opengl3.gl, std.experimental.logger;
-import chip8emu.screen;
+import std.stdio, std.datetime, core.thread, derelict.sdl2.sdl, derelict.opengl3.gl, std.experimental.logger, std.file;
+import chip8emu.screen, chip8emu.memory, chip8emu.cpu, chip8emu.keyboard;
 
 final class Chip8Emulator {
 	
@@ -10,10 +10,16 @@ final class Chip8Emulator {
 
 	bool running = true;
 
+	Cpu cpu;
+	Memory memory;
 	Screen screen;
+	Keyboard keyboard;
 	
 	this() {
+		memory = new Memory();
 		screen = new Screen();
+		keyboard = new Keyboard();
+		cpu = new Cpu(memory, screen, keyboard);
 	}
 
 	void start() {
@@ -56,6 +62,8 @@ final class Chip8Emulator {
 
 		while(running) {
 			updateEvents();
+			cpu.performExecutionSteps();
+			cpu.updateTimers(); // TODO: 60hz
 			render();
 			limitFps();
 		}
@@ -86,7 +94,6 @@ final class Chip8Emulator {
 		glOrtho(0, 800, 0, 600, -1, 1);
 		glMatrixMode(GL_MODELVIEW);
 
-		screen.randomize();
 		glRasterPos3f(0, 600, 0);
 		glPixelZoom(5f, -5f);
 		glDrawPixels(64, 32, GL_GREEN, GL_UNSIGNED_BYTE, screen.buffer.ptr);
@@ -107,6 +114,17 @@ final class Chip8Emulator {
 			sw.reset();
 			sw.start();
 		}
+	}
+
+	void loadProgram(string name) {
+		log("Opening program ", name);
+		loadProgram(cast(ubyte[])read(name));
+	}
+
+	void loadProgram(ubyte[] data) {
+		assert(data.length < 4096, "Program too long. Must be less than 4096 bytes.");
+		log("Loading program");
+		memory.clearAndSetProgram(data);
 	}
 
 }

@@ -62,6 +62,7 @@ final class Chip8Emulator {
 
 		while(running) {
 			updateEvents();
+			keyboard.update();
 			cpu.performExecutionSteps();
 			cpu.updateTimers(); // TODO: 60hz
 			render();
@@ -96,7 +97,7 @@ final class Chip8Emulator {
 
 		glRasterPos3f(0, 600, 0);
 		glPixelZoom(5f, -5f);
-		glDrawPixels(64, 32, GL_GREEN, GL_UNSIGNED_BYTE, screen.buffer.ptr);
+		glDrawPixels(screen.width, screen.height, GL_GREEN, GL_UNSIGNED_BYTE, screen.buffer.ptr);
 
 		SDL_GL_SwapWindow(window);
 	}

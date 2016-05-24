@@ -1,21 +1,22 @@
 module chip8emu.screen;
 
-import std.random;
+import std.random, std.conv;
 
 final class Screen {
 	
+	ushort width = 64, height = 32;
 	ubyte[64][32] buffer;
 
 	void setPixel(ubyte x, ubyte y, bool active) {
-		assert(x < 64, "X must be less than 64");
-		assert(y < 32, "Y must be less than 32");
+		assert(x < width, "X must be less than " ~ width.to!string);
+		assert(y < height, "Y must be less than " ~ height.to!string);
 		
 		buffer[y][x] = active ? 0xFF : 0x00;
 	}
 
 	bool opIndex(ubyte x, ubyte y) {
-		assert(x < 64, "X must be less than 64");
-		assert(y < 32, "Y must be less than 32");
+		assert(x < width, "X must be less than " ~ width.to!string);
+		assert(y < height, "Y must be less than " ~ height.to!string);
 
 		return buffer[y][x] == 0xFF;
 	}
@@ -25,23 +26,30 @@ final class Screen {
 	}
 
 	void clear() {
-		foreach(y; 0 .. 32)
-			foreach(x; 0 .. 64)
+		foreach(y; 0 .. height)
+			foreach(x; 0 .. width)
 				setPixel(cast(ubyte)x, cast(ubyte)y, false);
 	}
 
 	void randomize() {
-		foreach(y; 0 .. 32)
-			foreach(x; 0 .. 64)
+		foreach(y; 0 .. height)
+			foreach(x; 0 .. width)
 				setPixel(cast(ubyte)x, cast(ubyte)y, uniform(0, 2) == 1);
 	}
 
-	void drawFromBytes(ubyte x, ubyte y, ubyte[] pixels) {
+	bool drawFromBytes(ubyte x, ubyte y, ubyte[] pixels) {
+		bool collision = false;
+
 		foreach(line; pixels) {
-			for(int x1 = 0; x1 < 8; x1++)
-				this[cast(ubyte)(x + x1) % 64, y % 32] = ((line >> (7 - x1)) & 1) == 1;
+			for(int x1 = 0; x1 < 8; x1++) {
+				if((((line >> (7 - x1)) & 1) == 1) && this[cast(ubyte)(x + x1) % width, y % height])
+					collision = true;
+				this[cast(ubyte)(x + x1) % width, y % height] = this[cast(ubyte)(x + x1) % width, y % height] ^ (((line >> (7 - x1)) & 1) == 1);
+			}
 			y++;
 		}
+
+		return collision;
 	}
 
 }

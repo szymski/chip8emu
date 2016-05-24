@@ -10,7 +10,7 @@ import chip8emu.screen, chip8emu.memory, chip8emu.keyboard;
 	The stack is an array of 16 16-bit values, used to store memory addresses.
 */
 
-enum opCodesPerExecution = 10;
+enum opCodesPerExecution = 16;
 
 class Cpu {
 
@@ -24,11 +24,16 @@ class Cpu {
 
 	bool halt = false;
 
+	ubyte keyRegister = 0;
+	bool waitingForKey = false;
+
 	ushort[16] stack;
 	ushort sp;
 
 	ubyte timerValue;
 	ubyte soundTimerValue;
+
+	bool megachipMode = false;
 
 	this(Memory memory, Screen screen, Keyboard keyboard) {
 		this.memory = memory;
@@ -40,6 +45,8 @@ class Cpu {
 
 	void reset() {
 		halt = false;
+		waitingForKey = false;
+		megachipMode = false;
 		pc = 0x200;
 		I = 0;
 		sp = 0;
@@ -53,8 +60,20 @@ class Cpu {
 	}
 
 	void executeInstruction() {
-		if(halt)
+		if(halt) {
+			if(waitingForKey) {
+				foreach(i, key; keyboard.keys) {
+					if(key) {
+						registers[keyRegister] = key;
+						halt = false;
+						waitingForKey = false;
+						break;
+					}
+				}
+			}
+
 			return;
+		}
 
 		ushort opCode = nextOpCode();
 
@@ -73,6 +92,16 @@ class Cpu {
 					// Return from a subroutine
 					case 0x0EE:
 						pc = stackPop();
+						break;
+
+					// Disable Megachip mode
+					case 0x010:
+						disableMegachip();
+						break;
+
+					// Enable Megachip mode
+					case 0x011:
+						enableMegachip();
 						break;
 
 					// Used only in old CHIP-8 computers.
@@ -147,32 +176,32 @@ class Cpu {
 
 					// Set Vx = Vx ADD Vy
 					case 0x4:
+						registers[0xF] = cast(int)registers[(opCode & 0x0F00) >> 8] + cast(int)registers[(opCode & 0x00F0) >> 4] > 0xFF;
 						registers[(opCode & 0x0F00) >> 8] += registers[(opCode & 0x00F0) >> 4];
-						// TODO: Carry flag
 						break;
 
 					// Set Vx = Vx SUB Vy
 					case 0x5:
+						registers[0xF] = cast(int)registers[(opCode & 0x0F00) >> 8] - cast(int)registers[(opCode & 0x00F0) >> 4] >= 0;
 						registers[(opCode & 0x0F00) >> 8] -= registers[(opCode & 0x00F0) >> 4];
-						// TODO: Borrow flag
 						break;
 
 					// Set Vx = Vx SHR x
 					case 0x6:
-						registers[(opCode & 0x0F00) >> 8] >>= registers[(opCode & 0x00F0) >> 4];
-						// TODO: Byte checking
+						registers[0xF] = registers[(opCode & 0x0F00) >> 8] & 7;
+						registers[(opCode & 0x0F00) >> 8] >>= 1;
 						break;
 
 					// Set Vx = Vx SUBN Vy
 					case 0x7:
+						registers[0xF] = cast(int)registers[(opCode & 0x00F0) >> 4] - cast(int)registers[(opCode & 0x0F00) >> 8] > 0xFF;
 						registers[(opCode & 0x0F00) >> 8] = cast(ubyte)(registers[(opCode & 0x00F0) >> 4] - registers[(opCode & 0x00F0) >> 8]);
-						// TODO: Borrow flag
 						break;
 
 					// Set Vx = Vx SHL x
 					case 0xE:
+						registers[0xF] = registers[(opCode & 0x0F00) >> 8] >> 7;
 						registers[(opCode & 0x0F00) >> 8] <<= registers[(opCode & 0x00F0) >> 4];
-						// TODO: Byte checking
 						break;
 
 					default:
@@ -207,9 +236,7 @@ class Cpu {
 				ubyte x = registers[(opCode & 0x0F00) >> 8], y = registers[(opCode & 0x00F0) >> 4], height = opCode & 0x000F;
 
 				ubyte[] data = memory.memory[I .. I + height];
-				screen.drawFromBytes(x, y, data);
-
-				// TODO: Collisions
+				registers[0xF] = screen.drawFromBytes(x, y, data) ? 1 : 0;
 
 				break;
 
@@ -240,19 +267,18 @@ class Cpu {
 			
 			case 0xF:
 
-				log("F");
-
 				switch(opCode & 0x00FF) {
 
 					// Set Vx = delay timer value
-					case 0x07:
+					case 0x7:
 						registers[(opCode & 0x0F00) >> 8] = timerValue;
 						break;
 
 					// Wait for key press, value stored in Vx
-					case 0x0A:
-						// TODO: Wait for key press
-						//registers[opCode & 0x0F00 >> 8] = ;
+					case 0xA:
+						keyRegister = (opCode & 0x0F00) >> 8;
+						halt = true;
+						waitingForKey = true;
 						break;
 
 					// Set delay timer = Vx
@@ -272,13 +298,15 @@ class Cpu {
 
 					// Set I = location of sprite for digit Vx
 					case 0x29:
-						log("asd");
 						I = registers[(opCode & 0x0F00) >> 8] * 5;
 						break;
 
 					// Store BCD representation of Vx in memory locations I, I+1, and I+2
 					case 0x33:
-						// TODO: BCD storing
+						auto register = registers[(opCode & 0x0F00) >> 8];
+						memory[I] = register /  100;
+						memory[cast(ushort)(I + 1)] = (register / 10) % 10;
+						memory[cast(ushort)(I + 2)] = register % 10;
 						break;
 
 					// Store registers V0 through Vx in memory starting at location I
@@ -312,7 +340,6 @@ class Cpu {
 	ushort nextOpCode() {
 		auto opCode = memory[pc] << 8 | memory[cast(ushort)(pc + 1)];
 		pc += 2;
-		logf("%X", opCode);
 		return cast(ushort)opCode;
 	}
 
@@ -333,6 +360,14 @@ class Cpu {
 		auto value = stack[sp];
 		sp--;
 		return value;
+	}
+
+	void disableMegachip() {
+		megachipMode = false;
+	}
+
+	void enableMegachip() {
+		megachipMode = true;
 	}
 
 	void updateTimers() {

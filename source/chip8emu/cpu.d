@@ -1,7 +1,7 @@
 module chip8emu.cpu;
 
 import std.array, std.random, std.conv, std.experimental.logger;
-import chip8emu.screen, chip8emu.memory, chip8emu.keyboard;
+import chip8emu.emulator, chip8emu.screen, chip8emu.memory, chip8emu.keyboard;
 
 /*
 	CHIP-8 has 16, 8-bit registers (called from 0 to F) and one 16-bit register called I (mainly used to store memory addresses).
@@ -14,8 +14,9 @@ enum opCodesPerExecution = 16;
 
 class Cpu {
 
+	Chip8Emulator emulator;
 	Memory memory;
-	Screen screen;
+	IScreen screen;
 	Keyboard keyboard;
 
 	ushort pc;
@@ -33,9 +34,10 @@ class Cpu {
 	ubyte timerValue;
 	ubyte soundTimerValue;
 
-	bool megachipMode = false;
+	bool extendedScreenMode = false;
 
-	this(Memory memory, Screen screen, Keyboard keyboard) {
+	this(Chip8Emulator emulator, Memory memory, IScreen screen, Keyboard keyboard) {
+		this.emulator = emulator;
 		this.memory = memory;
 		this.screen = screen;
 		this.keyboard = keyboard;
@@ -46,7 +48,7 @@ class Cpu {
 	void reset() {
 		halt = false;
 		waitingForKey = false;
-		megachipMode = false;
+		extendedScreenMode = false;
 		pc = 0x200;
 		I = 0;
 		sp = 0;
@@ -54,12 +56,12 @@ class Cpu {
 		stack[0 .. $] = 0;
 	}
 
-	void performExecutionSteps() {
+	void doFixedCycleCount() {
 		foreach(i; 0 .. opCodesPerExecution)
-			executeInstruction();
+			doCycle();
 	}
 
-	void executeInstruction() {
+	void doCycle() {
 		if(halt) {
 			if(waitingForKey) {
 				foreach(i, key; keyboard.keys) {
@@ -94,14 +96,14 @@ class Cpu {
 						pc = stackPop();
 						break;
 
-					// Disable Megachip mode
-					case 0x010:
-						disableMegachip();
+					// Disable extended screen mode
+					case 0x0FE:
+						disableExtendedMode();
 						break;
 
-					// Enable Megachip mode
-					case 0x011:
-						enableMegachip();
+					// Enable extended screen mode
+					case 0x0FF:
+						enableExtendedMode();
 						break;
 
 					// Used only in old CHIP-8 computers.
@@ -235,6 +237,22 @@ class Cpu {
 			case 0xD:
 				ubyte x = registers[(opCode & 0x0F00) >> 8], y = registers[(opCode & 0x00F0) >> 4], height = opCode & 0x000F;
 
+				if(height == 0) {
+					ubyte[] data = memory.memory[I .. I + 1];
+					registers[0xF] = screen.drawFromBytes(x, y, data) ? 1 : 0;
+
+					data = memory.memory[I .. I + 2];
+					registers[0xF] &= screen.drawFromBytes(cast(ubyte)(x + 8), y, data) ? 1 : 0;
+
+					data = memory.memory[I .. I + 3];
+					registers[0xF] &= screen.drawFromBytes(x, cast(ubyte)(y + 8), data) ? 1 : 0;
+
+					data = memory.memory[I .. I + 4];
+					registers[0xF] &= screen.drawFromBytes(cast(ubyte)(x + 8), cast(ubyte)(y + 8), data) ? 1 : 0;
+
+					break;
+				}
+
 				ubyte[] data = memory.memory[I .. I + height];
 				registers[0xF] = screen.drawFromBytes(x, y, data) ? 1 : 0;
 
@@ -362,12 +380,16 @@ class Cpu {
 		return value;
 	}
 
-	void disableMegachip() {
-		megachipMode = false;
+	void disableExtendedMode() {
+		log("Disabling extended screen mode");
+		extendedScreenMode = false;
 	}
 
-	void enableMegachip() {
-		megachipMode = true;
+	void enableExtendedMode() {
+		log("Enabling extended screen mode");
+		extendedScreenMode = true;
+		emulator.screen = new SUPERCHIP8Screen();
+		screen = emulator.screen;
 	}
 
 	void updateTimers() {

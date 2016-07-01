@@ -4,7 +4,7 @@ import std.stdio, std.datetime, core.thread, derelict.sdl2.sdl, derelict.opengl3
 import chip8emu.screen, chip8emu.memory, chip8emu.cpu, chip8emu.keyboard;
 
 final class Chip8Emulator {
-	
+
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 
@@ -12,14 +12,14 @@ final class Chip8Emulator {
 
 	Cpu cpu;
 	Memory memory;
-	Screen screen;
+	IScreen screen;
 	Keyboard keyboard;
-	
+
 	this() {
 		memory = new Memory();
-		screen = new Screen();
+		screen = new CHIP8Screen();
 		keyboard = new Keyboard();
-		cpu = new Cpu(memory, screen, keyboard);
+		cpu = new Cpu(this, memory, screen, keyboard);
 	}
 
 	void start() {
@@ -39,7 +39,7 @@ final class Chip8Emulator {
 
 	private void loadLibraries() {
 		log("Loading libraries");
-        DerelictSDL2.load("lib/SDL2.dll");
+        DerelictSDL2.load("lib/SDL2");
         DerelictGL.load();
 	}
 
@@ -63,7 +63,7 @@ final class Chip8Emulator {
 		while(running) {
 			updateEvents();
 			keyboard.update();
-			cpu.performExecutionSteps();
+			cpu.doFixedCycleCount();
 			cpu.updateTimers(); // TODO: 60hz
 			render();
 			limitFps();
@@ -81,8 +81,8 @@ final class Chip8Emulator {
 
 				default:
 					break;
-			}		
-        }   
+			}
+        }
 	}
 
 	private void render() {
@@ -97,7 +97,7 @@ final class Chip8Emulator {
 
 		glRasterPos3f(0, 600, 0);
 		glPixelZoom(5f, -5f);
-		glDrawPixels(screen.width, screen.height, GL_GREEN, GL_UNSIGNED_BYTE, screen.buffer.ptr);
+		glDrawPixels(screen.width, screen.height, GL_GREEN, GL_UNSIGNED_BYTE, screen.dataPointer);
 
 		SDL_GL_SwapWindow(window);
 	}
